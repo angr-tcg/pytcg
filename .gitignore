@@ -1,0 +1,6 @@
+libtcg.c
+libtcg.o
+libtcg.cpython*.so
+test_asm.bin
+qemu.log
+env
