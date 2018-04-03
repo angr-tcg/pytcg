@@ -383,7 +383,7 @@ static inline intptr_t QEMU_ARTIFICIAL GET_TCGV_PTR(TCGv_ptr t)
 
 /* used to align parameters */
 #define TCG_CALL_DUMMY_TCGV     MAKE_TCGV_I32(-1)
-#define TCG_CALL_DUMMY_ARG      ((TCGArg)(-1))
+#define TCG_CALL_DUMMY_ARG      ((LibTCGArg)(-1))
 
 typedef enum {
     /* Used to indicate the type of accesses on which ordering
@@ -776,6 +776,8 @@ TCGv_i64 tcg_const_local_i64(int64_t val);
 
 TCGLabel *gen_new_label(void);
 
+#endif
+
 /**
  * label_arg
  * @l: label
@@ -783,7 +785,7 @@ TCGLabel *gen_new_label(void);
  * Encode a label for storage in the TCG opcode stream.
  */
 
-static inline TCGArg label_arg(TCGLabel *l)
+static inline LibTCGArg label_arg(TCGLabel *l)
 {
     return (uintptr_t)l;
 }
@@ -796,10 +798,12 @@ static inline TCGArg label_arg(TCGLabel *l)
  * encoding of the TCG opcode stream.
  */
 
-static inline TCGLabel *arg_label(TCGArg i)
+static inline TCGLabel *arg_label(LibTCGArg i)
 {
     return (TCGLabel *)(uintptr_t)i;
 }
+
+#if 0
 
 /**
  * tcg_ptr_byte_diff
@@ -846,6 +850,8 @@ static inline size_t tcg_current_code_size(TCGContext *s)
     return tcg_ptr_byte_diff(s->code_ptr, s->code_buf);
 }
 
+#endif
+
 /* Combine the TCGMemOp and mmu_idx parameters into a single value.  */
 typedef uint32_t TCGMemOpIdx;
 
@@ -856,7 +862,7 @@ typedef uint32_t TCGMemOpIdx;
  *
  * Encode these values into a single parameter.
  */
-static inline TCGMemOpIdx make_memop_idx(TCGMemOp op, unsigned idx)
+static inline TCGMemOpIdx make_memop_idx(LibTCGMemOp op, unsigned idx)
 {
     tcg_debug_assert(idx <= 15);
     return (op << 4) | idx;
@@ -868,7 +874,7 @@ static inline TCGMemOpIdx make_memop_idx(TCGMemOp op, unsigned idx)
  *
  * Extract the memory operation from the combined value.
  */
-static inline TCGMemOp get_memop(TCGMemOpIdx oi)
+static inline LibTCGMemOp get_memop(TCGMemOpIdx oi)
 {
     return oi >> 4;
 }
@@ -883,6 +889,8 @@ static inline unsigned get_mmuidx(TCGMemOpIdx oi)
 {
     return oi & 15;
 }
+
+#if 0
 
 /**
  * tcg_qemu_tb_exec:

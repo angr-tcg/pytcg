@@ -42,22 +42,12 @@ for i in range(instructions.instruction_count):
     op = instructions.instructions[i]
     op_def = lib.tcg_op_defs[op.opc]
     name = ffi.string(op_def.name)
-    print('TCG %s %d %d %d' % (name, op_def.nb_oargs, op_def.nb_iargs, op_def.nb_cargs))
-
-#     int o = 0;
-
-#     for (int i = 0; i < def->nb_oargs; i++, o++) {
-#         fprintf(stderr, "\t[out:%d] arg: 0x%zx\n", i, op->args[o]);
-#         print_temp_reg(&insns.temps[op->args[o]]);
-#     }
-
-#     for (int i = 0; i < def->nb_iargs; i++, o++) {
-#         fprintf(stderr, "\t[in:%d] arg: 0x%zx\n", i, op->args[o]);
-#         print_temp_reg(&insns.temps[op->args[o]]);
-#     }
-
-#     for (int i = 0; i < def->nb_cargs; i++, o++) {
-#         fprintf(stderr, "\t[const:%d] arg: 0x%zx\n", i, op->args[o]);
-#     }
+    # print('TCG %s %d %d %d' % (name, op_def.nb_oargs, op_def.nb_iargs, op_def.nb_cargs))
+    lib.tcg_dump_ops(
+        ffi.addressof(instructions),
+        ffi.addressof(op),
+        ffi.addressof(op_def),
+        op.args
+        )
 
 tcg.free_instructions(ffi.addressof(instructions))
