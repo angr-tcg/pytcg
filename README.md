@@ -4,10 +4,19 @@ pytcg
 Status: Very early, but working!  So far it's able to translate from 32-bit x86
 to TCG ops and print out some op info. Pythonification is next!
 
-Before using this, you'll need to build libtcg. See the
-[libtcg](https://github.com/angr-tcg/qemu) repo.
+## Build libtcg
 
-## Setup
+Before using pytcg, you'll need to build libtcg. You can do this by:
+
+    cd libtcg
+    ./build.sh
+
+This will clone the Qemu repository with the libtcg patches, build, and extract
+the necessary files into this directory.
+
+See the [libtcg](https://github.com/angr-tcg/qemu) repo for more info.
+
+## Setup Python 3 Virtual Environment
 
 Setup your Python 3 virtual environment with something like:
 
