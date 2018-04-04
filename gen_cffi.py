@@ -42,7 +42,7 @@ LibTCGOpDef tcg_op_defs[] = {
 
 # FIXME: Should be generating the API.h file from libtcg, but CFFI C parser
 # is pretty picky.
-src = open('inc/api.h', 'r', encoding='utf-8').read()
+src = open('inc/api.h', 'r').read()
 src += r"""
 libtcg_init_func init_libtcg(void);
 LibTCGOpDef tcg_op_defs[];

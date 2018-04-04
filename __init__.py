@@ -1,9 +1,10 @@
 # FFI interface to libtcg (run build_ffi first)
+from __future__ import print_function
 from libtcg import ffi, lib
 import ctypes
 import sys
 
-libc_so = {"darwin": "libc.dylib", "linux": ""}[sys.platform]
+libc_so = {"darwin": "libc.dylib", "linux": "", "linux2": ""}[sys.platform]
 libc = ctypes.CDLL(libc_so, use_errno=True, use_last_error=True)
 
 tcg = lib.init_libtcg()(b'qemu64', 0xb0000000)
