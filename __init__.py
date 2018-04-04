@@ -19,7 +19,7 @@ def main():
                        0)
 
     # Load in test assembly file
-    code = open('../libtcg_test/test_asm.bin', 'rb').read()
+    code = open('./test/simple_loop.bin', 'rb').read()
     dest = int(ffi.cast("uintptr_t", address.pointer))
     ctypes.memmove(dest, code, len(code))
 
