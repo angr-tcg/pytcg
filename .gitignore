@@ -1,6 +1,7 @@
 libtcg.c
 libtcg.o
 libtcg.cpython*.so
+libtcg.so
 test_asm.bin
 qemu.log
 env
