@@ -3,6 +3,7 @@ from __future__ import print_function
 from libtcg import ffi, lib
 import ctypes
 import sys
+import argparse
 
 libc_so = {"darwin": "libc.dylib", "linux": "", "linux2": ""}[sys.platform]
 libc = ctypes.CDLL(libc_so, use_errno=True, use_last_error=True)
@@ -10,44 +11,80 @@ libc = ctypes.CDLL(libc_so, use_errno=True, use_last_error=True)
 tcg = lib.init_libtcg()(b'qemu64', 0xb0000000)
 assert(tcg is not None)
 
+class IRSB(object):
+    def __init__(self, data, mem_addr, arch, max_inst=None, max_bytes=None, bytes_offset=0, traceflags=0, opt_level=1, num_inst=None, num_bytes=None):
+        # FIXME: Unsupported interfaces
+        assert(arch == 'amd64')
+        assert(max_inst is None)
+        assert(max_bytes is None)
+        assert(traceflags == 0)
+        assert(opt_level == 1)
+        assert(num_inst is None)
+        assert(num_bytes is None)
+        self.arch = arch
+        self.addr = mem_addr
+        self.size = len(data)
+
+        # Map in a page we can write to
+        self.address = tcg.mmap(mem_addr, 4096, 3, 0x22, -1, 0)
+        assert(self.address.virtual_address == mem_addr)
+
+        # Copy in data
+        dest = int(ffi.cast("uintptr_t", self.address.pointer))
+        ctypes.memmove(dest, data, len(data))
+
+        # Translate block of instructions starting at bytes_offset
+        self._tb = tcg.translate(self.address.virtual_address + bytes_offset)
+
+        print("global_temps:     %d" % self._tb.global_temps)
+        print("total_temps:      %d" % self._tb.total_temps)
+        print("virtual_addr:     0x%x" % self.address.virtual_address)
+        print("num instructions: %d" % self._tb.instruction_count)
+        print('')
+
+    def __del__(self):
+        tcg.free_instructions(ffi.addressof(self._tb))
+    
+    def _pp_str(self):
+        s = []
+        for i in range(self._tb.instruction_count):
+            op = self._tb.instructions[i]
+            op_def = lib.tcg_op_defs[op.opc]
+            name = ffi.string(op_def.name)
+            s.append(tcg_dump_ops(self._tb, op, op_def, op.args))
+        return '\n'.join(s)
+
+    def pp(self):
+        """
+        Pretty-print the IRSB to stdout.
+        """
+        print(self._pp_str())
+
+    def __repr__(self):
+        return 'IRSB <0x%x bytes, %d ins., %s> at 0x%x' % (self.size, self.instructions, str(self.arch), self.addr)
+
+    def __str__(self):
+        return self._pp_str()
+
+    @property
+    def instructions(self):
+        """
+        The number of instructions in this block
+        """
+        if self._instructions is None:
+            self._instructions = len([s for s in self.statements if type(s) is stmt.IMark])
+        return self._instructions
+
 def main():
-    # Map in a page we can write to
-    address = tcg.mmap(0,
-                       4096,
-                       3, # PROT_READ | PROT_WRITE,
-                       0x22, # MAP_PRIVATE | MAP_ANONYMOUS,
-                       -1,
-                       0)
+    ap = argparse.ArgumentParser()
+    ap.add_argument('file')
+    ap.add_argument('arch')
+    ap.add_argument('mem_addr', type=lambda x:int(x, 0))
+    args = ap.parse_args()
 
-    # Load in test assembly file
-    code = open('./test/simple_loop.bin', 'rb').read()
-    dest = int(ffi.cast("uintptr_t", address.pointer))
-    ctypes.memmove(dest, code, len(code))
-
-    # Translate block of instructions
-    instructions = tcg.translate(address.virtual_address)
-
-    print("global_temps:     %d" % instructions.global_temps)
-    print("total_temps:      %d" % instructions.total_temps)
-    print("virtual_addr:     0x%x" % address.virtual_address)
-    print("num instructions: %d" % instructions.instruction_count)
-    print('')
-
-    for i in range(instructions.instruction_count):
-        op = instructions.instructions[i]
-        op_def = lib.tcg_op_defs[op.opc]
-        name = ffi.string(op_def.name)
-        # sys.stdout.write(' c:')
-        # sys.stdout.flush()
-        # lib.tcg_dump_ops(
-        #     ffi.addressof(instructions),
-        #     ffi.addressof(op),
-        #     ffi.addressof(op_def),
-        #     op.args
-        #     )
-        tcg_dump_ops(instructions, op, op_def, op.args)
-
-    tcg.free_instructions(ffi.addressof(instructions))
+    data = open(args.file, 'rb').read()
+    irsb = IRSB(data, args.mem_addr, args.arch)
+    irsb.pp()
 
 def tcg_get_arg_str_idx(s, idx):
     assert(idx >= 0 and idx < s.total_temps)
@@ -322,46 +359,8 @@ def tcg_dump_ops(s, op, op_def, args):
             rep += "%s$0x%x" % ("," if k else "", args[k])
             i += 1
             k += 1
-# #if 0 // FIXME
-#     if (op->life)
-#     {
-#         unsigned life = op->life;
 
-#         for (; col < 48; ++col)
-#         {
-#             putc(' ', qemu_logfile);
-#         }
-
-#         if (life & (SYNC_ARG * 3))
-#         {
-#             qemu_log("  sync:");
-#             for (i = 0; i < 2; ++i)
-#             {
-#                 if (life & (SYNC_ARG << i))
-#                 {
-#                     qemu_log(" %d", i);
-#                 }
-#             }
-#         }
-#         life /= DEAD_ARG;
-#         if (life)
-#         {
-#             qemu_log("  dead:");
-#             for (i = 0; life; ++i, life >>= 1)
-#             {
-#                 if (life & 1)
-#                 {
-#                     qemu_log(" %d", i);
-#                 }
-#             }
-#         }
-#     }
-# #endif
-#     qemu_log("\n");
-# }
-
-    if rep:
-        print(rep)
+    return rep
 
 if __name__ == '__main__':
     main()
