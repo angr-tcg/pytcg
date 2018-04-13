@@ -4,6 +4,11 @@
 from cffi import FFI
 ffibuilder = FFI()
 
+# FIXME: Should really be using LD_LIBRARY_PATH, but let's just hardcode it
+# here for simplicity
+import os
+path_to_libtcg = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'libtcg', 'libtcg-x86_64.so.2.8.50')
+
 ffibuilder.set_source("libtcg",
 r"""
 #include <dlfcn.h>
@@ -15,7 +20,7 @@ r"""
 /* Helper startup function to load libtcg */
 libtcg_init_func init_libtcg(void) {
     /* Load libtcg */
-    void *handle = dlopen("./libtcg/libtcg-x86_64.so.2.8.50", RTLD_LAZY);
+    void *handle = dlopen("%s", RTLD_LAZY);
     assert(handle != NULL);
     
     libtcg_init_func libtcg_init;
@@ -36,7 +41,7 @@ LibTCGOpDef tcg_op_defs[] = {
 #include "tcg-opc.h"
 #undef DEF
 };
-    """,
+    """ % path_to_libtcg,
     include_dirs=['inc', 'libtcg'],
     libraries=['dl'])
 
