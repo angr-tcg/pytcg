@@ -16,9 +16,9 @@ the necessary files into this directory.
 
 See the [libtcg](https://github.com/angr-tcg/qemu) repo for more info.
 
-## Setup Python 3 Virtual Environment
+## Setup Python Virtual Environment
 
-Setup your Python 3 virtual environment with something like:
+Setup your Python virtual environment with something like:
 
     sudo apt-get install python3-venv
     python3 -m venv env
