@@ -40,7 +40,7 @@ There's a simple Makefile to build the FFI and run basic interface testing.
  movi_i64 tmp0,$0x3290
  ext32u_i64 rcx,tmp0
 
-# mov dword [esi], ecx
+# loop: mov dword [esi], ecx
 --- 00000000b0000005 0000000000000000
  add_i64 tmp2,rsi,ds_base
  ext32u_i64 tmp2,tmp2
@@ -64,13 +64,15 @@ There's a simple Makefile to build the FFI and run basic interface testing.
  movi_i32 cc_op,$0x20
  movi_i64 tmp11,$0x0
  brcond_i64 tmp0,tmp11,ne,$L0
- goto_tb $0x0
- movi_i64 tmp3,$0xb000000a
- st_i64 tmp3,env,$0x80
- exit_tb $0x7ffff15a5010
- set_label $L0
- goto_tb $0x1
- movi_i64 tmp3,$0xb0000005
- st_i64 tmp3,env,$0x80
- exit_tb $0x7ffff15a5011
+ 
+ goto_tb $0x0                   # Sets next TB
+ movi_i64 tmp3,$0xb000000a      # Load address of next EIP (jump not taken)
+ st_i64 tmp3,env,$0x80          # Load addr into EIP (stored in env+0x80)
+ exit_tb $0x7ffff15a5010        # Exit the TB (tb+0)
+ 
+ set_label $L0                  # Come here if cc_dst != 0
+ goto_tb $0x1                   # Sets next TB
+ movi_i64 tmp3,$0xb0000005      # Load address of next EIP (jump taken, loops back around)
+ st_i64 tmp3,env,$0x80          # Load addr into EIP (stored in env+0x80)
+ exit_tb $0x7ffff15a5011        # Exit the TB (tb+1)
 ```
