@@ -17,10 +17,14 @@ fi
 cd build
 
 echo "[ * ] Starting configure"
-../configure --target-list=x86_64-libtcg --enable-libtcg
+../configure \
+	--target-list=x86_64-libtcg \
+	--enable-libtcg \
+	--enable-debug \
+	--extra-cflags="-g3 -O0" \
 
 echo "[ * ] Building..."
-make
+time make -j4 | tee build.log
 
 echo "[ * ] Extracting required files"
 popd
