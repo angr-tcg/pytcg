@@ -2,7 +2,7 @@ all: test
 
 .PHONY: test
 test: libtcg.o test/simple_loop.bin
-	python __init__.py
+	python __init__.py test/simple_loop.bin amd64 0xb0000000
 
 .PHONY: clean
 clean:
