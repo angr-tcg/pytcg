@@ -11,6 +11,49 @@ libc = ctypes.CDLL(libc_so, use_errno=True, use_last_error=True)
 tcg = lib.init_libtcg()(b'qemu64', 0xb0000000)
 assert(tcg is not None)
 
+class Tb(object):
+    # LibTCGOp *instructions;
+    # unsigned instruction_count;
+    # LibTCGArg *arguments;
+    # LibTCGTemp *temps;
+    # unsigned global_temps;
+    # unsigned total_temps;
+    def __init__(self):
+        pass
+
+class TcgTemp(object):
+    # LibTCGReg reg:8;
+    # LibTCGTempVal val_type:8;
+    # LibTCGType base_type:8;
+    # LibTCGType type:8;
+    # unsigned int fixed_reg:1;
+    # unsigned int indirect_reg:1;
+    # unsigned int indirect_base:1;
+    # unsigned int mem_coherent:1;
+    # unsigned int mem_allocated:1;
+    # unsigned int temp_local:1;
+    # unsigned int temp_allocated:1;
+    # tcg_temp val;
+    # struct LibTCGTemp *mem_base;
+    # intptr_t mem_offset;
+    # const char *name;
+    pass
+
+class TcgOp(object):
+    def __init__(self, op_def, opc, calli, callo, args):
+        self.op_def = op_def
+        self.opc = opc
+        self.calli = calli
+        self.callo = callo
+        self.args = args
+
+    @classmethod
+    def from_LibTCGOp(cls, lto):
+        op_def = lib.tcg_op_defs[lto.opc]
+        # name = ffi.string(op_def.name)
+        # FIXME: Args array should be op_def
+        return TcgOp(op_def, lto.opc, lto.calli, lto.callo, [])
+
 class IRSB(object):
     def __init__(self, data, mem_addr, arch, max_inst=None, max_bytes=None, bytes_offset=0, traceflags=0, opt_level=1, num_inst=None, num_bytes=None):
         # FIXME: Unsupported interfaces
@@ -25,6 +68,10 @@ class IRSB(object):
         self.addr = mem_addr
         self.size = len(data)
 
+        #
+        # Perform the lifting
+        #
+
         # Map in a page we can write to
         self.address = tcg.mmap(mem_addr, 4096, 3, 0x22, -1, 0)
         assert(self.address.virtual_address == mem_addr)
@@ -36,11 +83,24 @@ class IRSB(object):
         # Translate block of instructions starting at bytes_offset
         self._tb = tcg.translate(self.address.virtual_address + bytes_offset)
 
-        print("global_temps:     %d" % self._tb.global_temps)
-        print("total_temps:      %d" % self._tb.total_temps)
-        print("virtual_addr:     0x%x" % self.address.virtual_address)
-        print("num instructions: %d" % self._tb.instruction_count)
+        self._global_temps = self._tb.global_temps
+        print("global_temps: %d" % self._global_temps)
+
+        self._total_temps = self._tb.total_temps
+        print("total_temps:  %d" % self._total_temps)
+
+        self._virt_addr = self.address.virtual_address
+        print("virtual_addr: 0x%x" % self._virt_addr)
+
+        self._num_ops = self._tb.instruction_count
+        print("num ops:      %d" % self._num_ops)
+    
         print('')
+
+        ops = []
+        for i in range(self._tb.instruction_count):
+            op = self._tb.instructions[i]
+            ops.append(TcgOp.from_LibTCGOp(op))
 
     def __del__(self):
         tcg.free_instructions(ffi.addressof(self._tb))
@@ -262,16 +322,13 @@ def tcg_dump_ops(s, op, op_def, args):
     if c == lib.LIBTCG_INDEX_op_insn_start:
         rep += '\n\n---'
 
-#         for (i = 0; i < TARGET_INSN_START_WORDS; ++i)
-#         {
-        for i in range(1): #range(lib.TARGET_INSN_START_WORDS): ???
-#             target_ulong a;
-# #if TARGET_LONG_BITS > TCG_TARGET_REG_BITS
-#             a = ((target_ulong)args[i * 2 + 1] << 32) | args[i * 2];
-# #else
-#             a = args[i];
+        TARGET_INSN_START_WORDS = 2
+        for i in range(TARGET_INSN_START_WORDS):
+            # if lib.TARGET_LONG_BITS > lib.TCG_TARGET_REG_BITS:
+            #     # a = ((target_ulong)args[i * 2 + 1] << 32) | args[i * 2];
+            #     assert(False)
+            # else:
             a = args[i]
-# #endif
             rep += (' ' + TARGET_FMT_lx) % a
     elif c == lib.LIBTCG_INDEX_op_call:
         # variable number of arguments
