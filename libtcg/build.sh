@@ -2,11 +2,19 @@
 set -e
 QEMU_GIT_REPO="https://github.com/angr-tcg/qemu.git"
 
-echo "[ * ] Cloning libtcg (qemu) repo"
-git clone $QEMU_GIT_REPO qemu
+if [ ! -d "qemu" ]; then
+	echo "[ * ] Cloning libtcg (qemu) repo"
+	git clone $QEMU_GIT_REPO qemu
+	pushd qemu
+	git checkout libtcg
+	popd
+fi
+
 pushd qemu
-git checkout libtcg
-mkdir build && cd build
+if [ ! -d "build" ]; then
+	mkdir build
+fi
+cd build
 
 echo "[ * ] Starting configure"
 ../configure --target-list=x86_64-libtcg --enable-libtcg
