@@ -320,7 +320,7 @@ def tcg_dump_ops(s, op, op_def, args):
     rep = ''
 
     if c == lib.LIBTCG_INDEX_op_insn_start:
-        rep += '\n\n---'
+        rep += '@'
 
         TARGET_INSN_START_WORDS = 2
         for i in range(TARGET_INSN_START_WORDS):
@@ -329,7 +329,7 @@ def tcg_dump_ops(s, op, op_def, args):
             #     assert(False)
             # else:
             a = args[i]
-            rep += (' ' + TARGET_FMT_lx) % a
+            rep += (' 0x' + TARGET_FMT_lx) % a
     elif c == lib.LIBTCG_INDEX_op_call:
         # variable number of arguments
         nb_oargs = op.callo
@@ -337,7 +337,7 @@ def tcg_dump_ops(s, op, op_def, args):
         nb_cargs = op_def.nb_cargs
 
         # function name, flags, out args
-        rep += ' %s %s,$0x%x,$%d' % (
+        rep += '%s %s,$0x%x,$%d' % (
             ffi.string(op_def.name).decode('utf-8'),
             tcg_find_helper(s, args[nb_oargs + nb_iargs]),
             args[nb_oargs + nb_iargs + 1], nb_oargs)
@@ -353,7 +353,7 @@ def tcg_dump_ops(s, op, op_def, args):
             rep += ',%s' % t
 
     else:
-        rep += ' %s ' % ffi.string(op_def.name).decode('utf-8')
+        rep += '%s ' % ffi.string(op_def.name).decode('utf-8')
         nb_oargs = op_def.nb_oargs
         nb_iargs = op_def.nb_iargs
         nb_cargs = op_def.nb_cargs
