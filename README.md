@@ -49,7 +49,7 @@ functions, etc.
 ## Example op pretty-print
 
 Input assembly:
-```
+```nasm
      1                                  bits 32
      2                                  org 0xb0000000
      3                                  
@@ -109,7 +109,7 @@ Input assembly:
 ```
 
 For reference, PyVEX's IR of the same code (very similar of course):
-```
+```python
 import angr
 main_opts = {
     'backend': 'blob',
@@ -121,7 +121,8 @@ p = angr.Project('pytcg/test/simple_loop.bin', auto_load_libs=False, main_opts=m
 s = p.factory.entry_state()
 b = s.block()
 b.vex.pp()
-
+```
+```
 IRSB {
    t0:Ity_I64 t1:Ity_I64 t2:Ity_I32 t3:Ity_I64 t4:Ity_I1 t5:Ity_I64 t6:Ity_I64 t7:Ity_I64 t8:Ity_I64 t9:Ity_I64 t10:Ity_I64
 
@@ -148,7 +149,7 @@ IRSB {
 
 From target/i386/cpu.h:
 
-```
+```c
 /* Instead of computing the condition codes after each x86 instruction,
  * QEMU just stores one operand (called CC_SRC), the result
  * (called CC_DST) and the type of operation (called CC_OP). When the
