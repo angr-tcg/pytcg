@@ -143,3 +143,17 @@ IRSB {
    NEXT: PUT(rip) = 0x00000000b0000005; Ijk_Boring
 }
 ```
+
+## Understanding cc_*
+
+From target/i386/cpu.h:
+
+```
+/* Instead of computing the condition codes after each x86 instruction,
+ * QEMU just stores one operand (called CC_SRC), the result
+ * (called CC_DST) and the type of operation (called CC_OP). When the
+ * condition codes are needed, the condition codes can be calculated
+ * using this information. Condition codes are not generated if they
+ * are only needed for conditional branches.
+ */
+```
