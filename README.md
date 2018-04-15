@@ -25,9 +25,26 @@ Setup your Python virtual environment with something like:
     source env/bin/activate
     pip install -r requirements.txt
 
+If you have the angr virtual environment already set up, you can use that too
+(via `workon angr`) since the pytcg requirements are a subset of angr's.
+
 ## Run
 
-There's a simple Makefile to build the FFI and run basic interface testing.
+There's a simple Makefile to build the FFI and run basic interface testing:
+
+    make
+
+## Overview of Qemu sources
+
+Libtcg interface is located at qemu/libtcg/libtcg.c. The frontend (which does
+guest binary to TCG translation) is located at qemu/target/i386/translate.c.
+
+## Debugging Qemu
+
+If you want to step through the real TCG generation code, fire up ipython in
+one terminal, get the process id, then in another terminal fire up gdb and
+attach to the ipython process. Then you can set breakpoints on code generation
+functions, etc.
 
 ## Example op pretty-print
 
@@ -91,8 +108,7 @@ Input assembly:
  exit_tb $0x0
 ```
 
-PyVEX's IR of the same code:
-
+For reference, PyVEX's IR of the same code (very similar of course):
 ```
 import angr
 main_opts = {
