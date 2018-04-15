@@ -66,7 +66,7 @@ Input assembly:
  movi_i64 tmp11,$0xffffffffffffffff
  add_i64 tmp0,tmp0,tmp11
  ext32u_i64 rcx,tmp0
- call glue(glue(atomic_, xchg), q_be),$0x20,$1,cc_src,cc_dst,cc_src,cc_src2,cc_op
+ call cc_compute_c,$0x50,$1,cc_src,cc_dst,cc_src,cc_src2,cc_op
  mov_i64 cc_dst,tmp0
  discard cc_src2
  discard cc_op
