@@ -5,3 +5,4 @@ libtcg.so
 test_asm.bin
 qemu.log
 env
+*.pyc
