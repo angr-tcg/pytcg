@@ -181,7 +181,8 @@ def main():
     args = ap.parse_args()
 
     data = open(args.file, 'rb').read()
-    irsb = IRSB(data, args.mem_addr, args.arch)
+    assert(args.arch == 'amd64')
+    irsb = IRSB(data, args.mem_addr, archinfo.ArchAMD64())
     irsb.pp()
 
 def tcg_get_arg_str_idx(s, idx):
