@@ -4,6 +4,7 @@ from libtcg import ffi, lib
 import ctypes
 import sys
 import argparse
+# import archinfo
 
 libc_so = {"darwin": "libc.dylib", "linux": "", "linux2": ""}[sys.platform]
 libc = ctypes.CDLL(libc_so, use_errno=True, use_last_error=True)
@@ -57,16 +58,23 @@ class TcgOp(object):
 class IRSB(object):
     def __init__(self, data, mem_addr, arch, max_inst=None, max_bytes=None, bytes_offset=0, traceflags=0, opt_level=1, num_inst=None, num_bytes=None):
         # FIXME: Unsupported interfaces
-        assert(arch == 'amd64')
+
+        # FIXME: angr will pass archinfo object
+        # assert(arch == 'amd64')
         assert(max_inst is None)
         assert(max_bytes is None)
         assert(traceflags == 0)
         assert(opt_level == 1)
         assert(num_inst is None)
-        assert(num_bytes is None)
+        # FIXME: angr will pass len(data), but libtcg has no way to limit the
+        # number of instructions decoded (it'll go until it hits a branch),
+        # go fix it!)
+        # assert(num_bytes is None) 
         self.arch = arch
         self.addr = mem_addr
         self.size = len(data)
+
+        self._instructions = None
 
         #
         # Perform the lifting
@@ -110,7 +118,7 @@ class IRSB(object):
         for i in range(self._tb.instruction_count):
             op = self._tb.instructions[i]
             op_def = lib.tcg_op_defs[op.opc]
-            name = ffi.string(op_def.name)
+            # name = ffi.string(op_def.name)
             s.append(tcg_dump_ops(self._tb, op, op_def, op.args))
         return '\n'.join(s)
 
@@ -132,7 +140,17 @@ class IRSB(object):
         The number of instructions in this block
         """
         if self._instructions is None:
-            self._instructions = len([s for s in self.statements if type(s) is stmt.IMark])
+            # FIXME: This ugliness should be trivially calculated when we first
+            # create the IRSB (really, the instruction decode in qemu should
+            # tell us, but _you_ need to go surface that out through the tb
+            # struct)
+            # self._instructions = len([s for s in self.statements if type(s) is stmt.IMark])
+            self._instructions = 0
+            for i in range(self._tb.instruction_count): # TCG Op count (not guest)
+                op = self._tb.instructions[i]
+                if op.opc == lib.LIBTCG_INDEX_op_insn_start:
+                    self._instructions += 1
+
         return self._instructions
 
 def main():
