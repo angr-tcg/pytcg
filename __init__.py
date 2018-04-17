@@ -130,6 +130,11 @@ class IRSB(object):
             op = self._tb.instructions[i]
             ops.append(TcgOp.from_LibTCGOp(op))
 
+        for i in range(self._total_temps):
+            print('temp #%d = %s' % (i, tcg_get_arg_str_idx(self._tb, i)))
+        
+        print('')
+
     def __del__(self):
         tcg.free_instructions(ffi.addressof(self._tb))
     
