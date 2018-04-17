@@ -4,7 +4,7 @@ from libtcg import ffi, lib
 import ctypes
 import sys
 import argparse
-# import archinfo
+import archinfo
 
 libc_so = {"darwin": "libc.dylib", "linux": "", "linux2": ""}[sys.platform]
 libc = ctypes.CDLL(libc_so, use_errno=True, use_last_error=True)
@@ -58,9 +58,7 @@ class TcgOp(object):
 class IRSB(object):
     def __init__(self, data, mem_addr, arch, max_inst=None, max_bytes=None, bytes_offset=0, traceflags=0, opt_level=1, num_inst=None, num_bytes=None):
         # FIXME: Unsupported interfaces
-
-        # FIXME: angr will pass archinfo object
-        # assert(arch == 'amd64')
+        assert(arch == archinfo.ArchAMD64()) # FIXME: Should support multiple architectures
         assert(max_inst is None)
         assert(max_bytes is None)
         assert(traceflags == 0)
