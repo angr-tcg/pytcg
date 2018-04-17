@@ -14,20 +14,7 @@ r"""
 #include <dlfcn.h>
 #include <assert.h>
 #include <stdio.h>
-
 #include <libtcg.h>
-
-/* Helper startup function to load libtcg */
-libtcg_init_func init_libtcg(void) {
-    /* Load libtcg */
-    void *handle = dlopen("%s", RTLD_LAZY);
-    assert(handle != NULL);
-    
-    libtcg_init_func libtcg_init;
-    libtcg_init = dlsym(handle, "libtcg_init");
-
-    return libtcg_init;
-}
 
 #define TARGET_LONG_BITS 64
 #define tcg_debug_assert assert
@@ -49,7 +36,6 @@ LibTCGOpDef tcg_op_defs[] = {
 # is pretty picky.
 src = open('inc/api.h', 'r').read()
 src += r"""
-libtcg_init_func init_libtcg(void);
 LibTCGOpDef tcg_op_defs[];
 """
 ffibuilder.cdef(src)

@@ -5,11 +5,33 @@ import ctypes
 import sys
 import argparse
 import archinfo
+import os.path
 
 libc_so = {"darwin": "libc.dylib", "linux": "", "linux2": ""}[sys.platform]
 libc = ctypes.CDLL(libc_so, use_errno=True, use_last_error=True)
 
-tcg = lib.init_libtcg()(b'qemu64', 0xb0000000)
+# void *dlopen(const char *filename, int flags);
+dlopen = libc.dlopen
+dlopen.restype = ctypes.c_void_p
+dlopen.argtypes = (ctypes.c_char_p, ctypes.c_int)
+
+# void *dlsym(void *handle, const char *symbol);
+dlsym = libc.dlsym
+dlsym.restype = ctypes.c_void_p
+dlsym.argtypes = (ctypes.c_void_p, ctypes.c_char_p)
+
+# Load the lib
+path_to_libtcg = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'libtcg', 'libtcg-x86_64.so.2.8.50')
+libtcg_so = dlopen(path_to_libtcg.encode('utf-8'), 1)
+assert(libtcg_so is not None)
+
+# Resolve libtcg_init
+libtcg_init = dlsym(libtcg_so, "libtcg_init".encode('utf-8'))
+assert(libtcg_init is not None)
+
+libtcg_init_func = ffi.cast('libtcg_init_func', libtcg_init)
+
+tcg = libtcg_init_func(b'qemu64', 0xb0000000)
 assert(tcg is not None)
 
 class Tb(object):
