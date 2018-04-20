@@ -1,4 +1,4 @@
-bits 32
+bits 64
 org 0xb0000000
 
 mov ecx, 0x3290
