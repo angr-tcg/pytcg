@@ -112,28 +112,42 @@ class IRSB(object):
         self._tb = tcg.translate(self.address.virtual_address + bytes_offset)
 
         self._global_temps = self._tb.global_temps
-        print("global_temps: %d" % self._global_temps)
-
         self._total_temps = self._tb.total_temps
-        print("total_temps:  %d" % self._total_temps)
-
         self._virt_addr = self.address.virtual_address
-        print("virtual_addr: 0x%x" % self._virt_addr)
-
         self._num_ops = self._tb.instruction_count
-        print("num ops:      %d" % self._num_ops)
-    
-        print('')
-
+        
         ops = []
         for i in range(self._tb.instruction_count):
             op = self._tb.instructions[i]
             ops.append(TcgOp.from_LibTCGOp(op))
 
-        for i in range(self._total_temps):
-            print('temp #%d = %s' % (i, tcg_get_arg_str_idx(self._tb, i)))
+        if False:
+            print("global_temps: %d" % self._global_temps)
+            print("total_temps:  %d" % self._total_temps)
+            print("virtual_addr: 0x%x" % self._virt_addr)
+            print("num ops:      %d" % self._num_ops)
+            print('')
+
+            for i in range(self._total_temps):
+                print('temp #%d = %s' % (i, tcg_get_arg_str_idx(self._tb, i)))
+
+                print('  reg.............: %d' % self._tb.temps[i].reg)
+                print('  val_type........: %d' % self._tb.temps[i].val_type)
+                print('  base_type.......: %d' % self._tb.temps[i].base_type)
+                print('  type............: %d' % self._tb.temps[i].type)
+                print('  fixed_reg.......: %d' % self._tb.temps[i].fixed_reg)
+                print('  indirect_reg....: %d' % self._tb.temps[i].indirect_reg)
+                print('  indirect_base...: %d' % self._tb.temps[i].indirect_base)
+                print('  mem_coherent....: %d' % self._tb.temps[i].mem_coherent)
+                print('  mem_allocated...: %d' % self._tb.temps[i].mem_allocated)
+                print('  temp_local......: %d' % self._tb.temps[i].temp_local)
+                print('  temp_allocated..: %d' % self._tb.temps[i].temp_allocated)
+                print('  val.............: %d' % self._tb.temps[i].val)
+                #print('  mem_base........: %d' % self._tb.temps[i].mem_base)
+                print('  mem_offset......: %d' % self._tb.temps[i].mem_offset)
+                #print('  name............: %d' % self._tb.temps[i].name)
         
-        print('')
+            print('')
 
     def __del__(self):
         tcg.free_instructions(ffi.addressof(self._tb))
