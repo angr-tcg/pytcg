@@ -158,7 +158,10 @@ class IRSB(object):
             op = self._tb.instructions[i]
             op_def = lib.tcg_op_defs[op.opc]
             # name = ffi.string(op_def.name)
-            s.append(tcg_dump_ops(self._tb, op, op_def, op.args))
+            d = tcg_dump_ops(self._tb, op, op_def, op.args)
+            if op.opc == lib.LIBTCG_INDEX_op_insn_start and len(s) > 0:
+                d = '\n' + d
+            s.append(d)
         return '\n'.join(s)
 
     def pp(self):
