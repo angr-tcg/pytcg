@@ -254,6 +254,7 @@ typedef struct {
 
 typedef address_pair (*libtcg_mmap_func)(uint64_t start, uint64_t len, int prot,
                                          int flags, int fd, off_t offset);
+typedef int (*libtcg_munmap_func)(uint64_t start, uint64_t len);
 typedef LibTCGInstructions (*libtcg_translate_func)(uint64_t virtual_address);
 
 typedef void (*libtcg_free_instructions_func)(LibTCGInstructions *instructions);
@@ -265,6 +266,7 @@ typedef struct {
     libtcg_translate_func translate;
     libtcg_free_instructions_func free_instructions;
     libtcg_find_helper_func find_helper;
+    libtcg_munmap_func munmap;
 } LibTCGInterface;
 typedef const LibTCGInterface *(*libtcg_init_func)(const char *cpu_name,
                                                    intptr_t start_address);

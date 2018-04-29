@@ -7,6 +7,10 @@ import argparse
 import archinfo
 import os.path
 
+#
+# Main libtcg loading and initialization
+#
+
 libc_so = {"darwin": "libc.dylib", "linux": "", "linux2": ""}[sys.platform]
 libc = ctypes.CDLL(libc_so, use_errno=True, use_last_error=True)
 
@@ -34,48 +38,51 @@ libtcg_init_func = ffi.cast('libtcg_init_func', libtcg_init)
 tcg = libtcg_init_func(b'qemu64', 0xb0000000)
 assert(tcg is not None)
 
-class Tb(object):
-    # LibTCGOp *instructions;
-    # unsigned instruction_count;
-    # LibTCGArg *arguments;
-    # LibTCGTemp *temps;
-    # unsigned global_temps;
-    # unsigned total_temps;
-    def __init__(self):
-        pass
 
-class TcgTemp(object):
-    # LibTCGReg reg:8;
-    # LibTCGTempVal val_type:8;
-    # LibTCGType base_type:8;
-    # LibTCGType type:8;
-    # unsigned int fixed_reg:1;
-    # unsigned int indirect_reg:1;
-    # unsigned int indirect_base:1;
-    # unsigned int mem_coherent:1;
-    # unsigned int mem_allocated:1;
-    # unsigned int temp_local:1;
-    # unsigned int temp_allocated:1;
-    # tcg_temp val;
-    # struct LibTCGTemp *mem_base;
-    # intptr_t mem_offset;
-    # const char *name;
-    pass
+class TcgInstructionBoundary(object):
+    def __init__(self, addr, extra):
+        self.addr = addr
+        self.extra = extra
+    
+    def __str__(self):
+        return '@ ' + ('%16x' % self.addr) 
+
+class TcgCall(object):
+    def __init__(self, helper, flags, oargs, iargs):
+        self.helper = helper
+        self.flags = flags
+        self.oargs = oargs
+        self.iargs = iargs
+
+    def __str__(self):
+        rep += '%s %s,$0x%x,$%d' % (
+            ffi.string(op_def.name).decode('utf-8'),
+            tcg_find_helper(s, args[nb_oargs + nb_iargs]),
+            args[nb_oargs + nb_iargs + 1], nb_oargs)
+
+        for i in range(nb_oargs):
+            rep += ',%s' % tcg_get_arg_str_idx(s, args[i])
+
+        for i in range(nb_iargs):
+            arg = args[nb_oargs+i]
+            t = '<dummy>'
+            if arg != -1:
+                t = tcg_get_arg_str_idx(s, arg)
+            rep += ',%s' % t
+
+        s = 'call'
 
 class TcgOp(object):
-    def __init__(self, op_def, opc, calli, callo, args):
+    def __init__(self, opc, op_def, oargs, iargs, cargs, cond, label, memop):
+        self.opc    = opc
         self.op_def = op_def
-        self.opc = opc
-        self.calli = calli
-        self.callo = callo
-        self.args = args
-
-    @classmethod
-    def from_LibTCGOp(cls, lto):
-        op_def = lib.tcg_op_defs[lto.opc]
-        # name = ffi.string(op_def.name)
-        # FIXME: Args array should be op_def
-        return TcgOp(op_def, lto.opc, lto.calli, lto.callo, [])
+        self.opc    = opc
+        self.oargs  = oargs
+        self.iargs  = iargs
+        self.cargs  = cargs
+        self.cond   = cond
+        self.label  = label
+        self.memop  = memop
 
 class IRSB(object):
     def __init__(self, data, mem_addr, arch, max_inst=None, max_bytes=None, bytes_offset=0, traceflags=0, opt_level=1, num_inst=None, num_bytes=None):
@@ -119,9 +126,11 @@ class IRSB(object):
         ops = []
         for i in range(self._tb.instruction_count):
             op = self._tb.instructions[i]
-            ops.append(TcgOp.from_LibTCGOp(op))
+            op_def = lib.tcg_op_defs[op.opc]
+            # name = ffi.string(op_def.name)
+            ops.append(self.from_LibTCGOp(self._tb, op, op_def, op.args))
 
-        if False:
+        if True:
             print("global_temps: %d" % self._global_temps)
             print("total_temps:  %d" % self._total_temps)
             print("virtual_addr: 0x%x" % self._virt_addr)
@@ -130,7 +139,7 @@ class IRSB(object):
 
             for i in range(self._total_temps):
                 print('temp #%d = %s' % (i, tcg_get_arg_str_idx(self._tb, i)))
-
+                continue
                 print('  reg.............: %d' % self._tb.temps[i].reg)
                 print('  val_type........: %d' % self._tb.temps[i].val_type)
                 print('  base_type.......: %d' % self._tb.temps[i].base_type)
@@ -195,6 +204,112 @@ class IRSB(object):
 
         return self._instructions
 
+    def from_LibTCGOp(self, s, op, op_def, args):
+        _opc    = op.opc
+        _op_def = op_def
+        _flags  = 0
+        _oargs  = []
+        _iargs  = []
+        _cargs  = []
+        _cond   = 0
+        _label  = None
+        _memop  = 0
+
+        c = op.opc
+
+        if op.opc == lib.LIBTCG_INDEX_op_insn_start:
+            TARGET_INSN_START_WORDS = 2
+            return TcgInstructionBoundary(args[1], args[1:TARGET_INSN_START_WORDS])
+
+        if op.opc == lib.LIBTCG_INDEX_op_call:
+            # variable number of arguments
+            nb_oargs = op.callo
+            nb_iargs = op.calli
+            nb_cargs = op_def.nb_cargs
+
+            # function name, flags, out args
+            for i in range(nb_oargs):
+                _oargs.append(tcg_get_arg_str_idx(s, args[i]))
+
+            for i in range(nb_iargs):
+                arg = args[nb_oargs+i]
+                t = '<dummy>'
+                if arg != -1:
+                    t = tcg_get_arg_str_idx(s, arg)
+                _iargs.append(t)
+
+            helper = tcg_find_helper(s, args[nb_oargs + nb_iargs])
+            _flags = args[nb_oargs + nb_iargs + 1]
+
+            return TcgCall(helper, _flags, _oargs, _iargs)
+
+        nb_oargs = op_def.nb_oargs
+        nb_iargs = op_def.nb_iargs
+        nb_cargs = op_def.nb_cargs
+        k = 0
+        for i in range(nb_oargs):
+            _oargs.append(args[k])
+            k += 1
+        for i in range(nb_iargs):
+            _iargs.append(args[k])
+            k += 1
+        if c in [
+            lib.LIBTCG_INDEX_op_brcond_i32,
+            lib.LIBTCG_INDEX_op_setcond_i32,
+            lib.LIBTCG_INDEX_op_movcond_i32,
+            lib.LIBTCG_INDEX_op_brcond2_i32,
+            lib.LIBTCG_INDEX_op_setcond2_i32,
+            lib.LIBTCG_INDEX_op_brcond_i64,
+            lib.LIBTCG_INDEX_op_setcond_i64,
+            lib.LIBTCG_INDEX_op_movcond_i64]:
+            # if args[k] in cond_name:
+            #     _cond = cond_name[args[k]]
+            # else:
+            #     _cond = '$0x%x' % args[k]
+            _cond = args[k]
+            k += 1
+            i = 1
+        elif c in [
+            lib.LIBTCG_INDEX_op_qemu_ld_i32,
+            lib.LIBTCG_INDEX_op_qemu_st_i32,
+            lib.LIBTCG_INDEX_op_qemu_ld_i64,
+            lib.LIBTCG_INDEX_op_qemu_st_i64]:
+            oi = args[k]
+            k += 1
+            mem_op = get_memop(oi)
+            ix = get_mmuidx(oi)
+            if mem_op & ~(LIBTCG_MO_AMASK | LIBTCG_MO_BSWAP | LIBTCG_MO_SSIZE):
+                # rep += ",$0x%x,%u" % (op, ix)
+                pass
+            else:
+                s_al = alignment_name[(mem_op & LIBTCG_MO_AMASK) >> LIBTCG_MO_ASHIFT]
+                s_op = ldst_name[mem_op & (LIBTCG_MO_BSWAP | LIBTCG_MO_SSIZE)]
+                # rep += ",%s%s,%u" % (s_al, s_op, ix)
+            
+            _memop = oi
+
+            i = 1
+        else:
+            i = 0
+
+        if c in [
+            lib.LIBTCG_INDEX_op_set_label,
+            lib.LIBTCG_INDEX_op_br,
+            lib.LIBTCG_INDEX_op_brcond_i32,
+            lib.LIBTCG_INDEX_op_brcond_i64,
+            lib.LIBTCG_INDEX_op_brcond2_i32]:
+            # rep += "%s$L%d" % ("," if k else "",  arg_label(args[k]).id)
+            _label = arg_label(args[k]).id
+            i += 1
+            k += 1
+
+        while i < nb_cargs:
+            i += 1
+            k += 1
+            _cargs.append(args[k])
+
+        return TcgOp(_opc, _op_def, _oargs, _iargs, _cargs, _cond, _label, _memop)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('file')
@@ -218,22 +333,20 @@ def tcg_get_arg_str_idx(s, idx):
     else:
         return 'tmp%d' % (idx - s.global_temps)
 
-
-# /* Find helper name.  */
 def tcg_find_helper(s, val):
+    """
+    Find helper name.
+    """
     hinfo = tcg.find_helper(val)
     if hinfo:
         return ffi.string(hinfo.name).decode('utf-8')
     return '(unknown)'
 
-# /**
-#  * arg_label
-#  * @i: value
-#  *
-#  * The opposite of label_arg.  Retrieve a label from the
-#  * encoding of the TCG opcode stream.
-#  */
 def arg_label(i):
+    """
+    The opposite of label_arg.  Retrieve a label from the
+    encoding of the TCG opcode stream.
+    """
     return ffi.cast('TCGLabel *', i)
 
 # typedef enum {
