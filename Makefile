@@ -1,8 +1,8 @@
 all: test
 
 .PHONY: test
-test: libtcg.o test/simple_loop.bin
-	python __init__.py test/simple_loop.bin amd64 0xb0000000
+test: libtcg.o tests/simple_loop.bin
+	python __init__.py tests/simple_loop.bin amd64 0xb0000000
 
 .PHONY: clean
 clean:
@@ -15,5 +15,3 @@ libtcg.o: gen_cffi.py $(wildcard inc/*.h)
 # Assembly test assembly files
 %.bin: %.nasm
 	nasm -o $@ -l $@.list $<
-
-
